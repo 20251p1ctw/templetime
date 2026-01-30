@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全台廟會活動編輯器</title>
+    <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.js"></script>
+    <style>
+        :root { --primary-red: #d32f2f; --dark-blue: #34495e; --bg-cream: #f9f7f2; }
+        body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; padding: 10px; background: var(--bg-cream); }
+        .page-header { text-align: center; margin-bottom: 20px; }
+        .info-section { font-size: 14px; color: #555; line-height: 1.6; margin: 15px auto; max-width: 800px; text-align: center; }
+        .notice-box { background: #fff3f3; border-radius: 8px; padding: 10px; display: inline-block; margin-top: 10px; border: 1px solid #ffebeb; text-align: left; }
+        .calendar-container { max-width: 900px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 15px rgba(0,0,0,0.1); padding: 20px; }
+        .calendar-nav { display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: center; margin-bottom: 20px; }
+        .nav-year select { font-size: 24px; font-weight: bold; border: none; background: transparent; color: var(--dark-blue); cursor: pointer; outline: none; appearance: none; }
+        .nav-month { text-align: center; font-size: 24px; font-weight: bold; color: var(--primary-red); }
+        .nav-controls { text-align: right; display: flex; justify-content: flex-end; gap: 8px; }
+        .nav-btn { background: var(--dark-blue); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; }
+        .btn-today { background: #7f8c8d; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); border: 1px solid #eee; }
+        .day-label { background: #fff; text-align: center; padding: 12px 0; font-weight: bold; border-bottom: 2px solid #eee; border-right: 1px solid #eee; font-size: 14px; }
+        .day { min-height: 100px; background: white; border-right: 1px solid #eee; border-bottom: 1px solid #eee; padding: 5px; cursor: pointer; transition: 0.2s; position: relative; }
+        .day:hover { background: #f0f0f0; }
+        .day.today { background: #fffde7 !important; }
+        .day-header { display: flex; justify-content: flex-end; align-items: baseline; gap: 4px; margin-bottom: 4px; }
+        .day-num { font-size: 14px; font-weight: bold; }
+        .lunar-num { font-size: 11px; color: #999; }
+        .event-tag { background: var(--primary-red); color: white; font-size: 11px; padding: 2px 4px; border-radius: 3px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index: 999; }
+        #admin-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; z-index: 1000; width: 95%; max-width: 500px; max-height: 90vh; overflow-y: auto; border-radius: 15px; box-shadow: 0 5px 25px rgba(0,0,0,0.2); }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; color: #e74c3c; font-weight: bold; margin-bottom: 8px; font-size: 16px; }
+        .form-group input, .form-group textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 15px; }
+        .btn-row { display: flex; gap: 12px; margin-top: 25px; }
+        .btn-save { flex: 1; background: #d32f2f; color: white; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 16px; }
+        .btn-cancel { flex: 1; background: #9e9e9e; color: white; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 16px; }
+        .existing-item { display: flex; justify-content: space-between; align-items: center; background: #fdf2f2; padding: 10px; border-radius: 8px; margin-bottom: 10px; border-left: 5px solid var(--primary-red); }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <h1>🏮 全台廟會活動編輯器</h1>
+        <div class="info-section">
+            <p id="lastUpdateText" style="margin: 5px 0; font-weight: bold;">最後更新時間：載入中...</p>
+            <p style="margin: 5px 0;">🎬 一拍一剪官方網站：<a href="https://20251p1ctw.github.io/1p1c/" target="_blank" style="color: var(--dark-blue); text-decoration: underline;">點我前往</a></p>
+            <div class="notice-box">
+                <p style="margin: 0; font-size: 13px;">⚠️ 此為<b>管理後台</b>。所有修改將同步至前台時刻表。</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="calendar-container">
+        <div class="calendar-nav">
+            <div class="nav-year"><select id="yearSelect" onchange="jumpToYear(this.value)"></select></div>
+            <div class="nav-month" id="displayMonth"></div>
+            <div class="nav-controls">
+                <button class="nav-btn btn-today" onclick="goToToday()">today</button>
+                <button class="nav-btn" onclick="changeMonth(-1)">&lt;</button>
+                <button class="nav-btn" onclick="changeMonth(1)">&gt;</button>
+            </div>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
+
+    <div id="modal-overlay" onclick="closeAdminModal()"></div>
+    <div id="admin-modal">
+        <h2 id="selected-date-display" style="font-size:20px; margin-bottom:20px;"></h2>
+        <div id="event-list-container"></div>
+        <hr style="margin:25px 0; border:0; border-top:1px dashed #ccc;">
+        <div id="form-section">
+            <p id="form-title" style="font-weight:bold; color:#e74c3c; font-size: 18px; margin-bottom: 15px;">➕ 新增活動</p>
+            <input type="hidden" id="editing-id">
+            <div class="form-group"><label>活動名稱 (必填)</label><input type="text" id="eventName" placeholder="例如：某某宮繞境大典"></div>
+            <div class="form-group"><label>宮址/堂址 (必填)</label><input type="text" id="eventLocation" placeholder="請輸入完整地址"></div>
+            <div class="form-group"><label>相關連結</label><input type="url" id="eventLink" placeholder="FB粉專或官網連結"></div>
+            <div class="form-group"><label>陣頭列表</label><textarea id="paradeList" rows="3" placeholder="開路鼓、神將、轎班..."></textarea></div>
+            <div class="form-group"><label>路關表</label><textarea id="routeMap" rows="3" placeholder="請描述行程路線"></textarea></div>
+            <div class="form-group"><label>其他備註</label><textarea id="notes" rows="2" placeholder="例如：供應晚餐、紅壇位置"></textarea></div>
+            <div class="btn-row">
+                <button id="submit-btn" class="btn-save" onclick="saveEvent()">加入並發佈</button>
+                <button class="btn-cancel" onclick="closeAdminModal()">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCBb-MHXXl80WIHsN5inq7-XmHxhsru8_Q",
+            authDomain: "templetime1p1c.firebaseapp.com",
+            databaseURL: "https://templetime1p1c-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "templetime1p1c",
+            storageBucket: "templetime1p1c.firebasestorage.app",
+            messagingSenderId: "167715763352",
+            appId: "1:167715763352:web:082b97c4a62dd2f40fcced"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        let currentNavDate = new Date();
+        let selectedDate = "";
+        let allEvents = [];
+
+        function initYearSelect() {
+            const yearSelect = document.getElementById('yearSelect');
+            const currentYear = new Date().getFullYear();
+            yearSelect.innerHTML = '';
+            for (let i = currentYear - 5; i <= currentYear + 10; i++) {
+                const opt = document.createElement('option');
+                opt.value = i; opt.text = `${i}年`;
+                yearSelect.appendChild(opt);
+            }
+        }
+
+        // --- 核心修正：同時監聽活動資料與最後更新時間 ---
+        onValue(ref(db, 'events'), (snapshot) => {
+            allEvents = [];
+            const data = snapshot.val();
+            if(data) {
+                for(let id in data) allEvents.push({ id, ...data[id] });
+            }
+            renderCalendar(); // 資料讀取後渲染日曆
+            if(selectedDate) refreshEventList(selectedDate);
+        });
+
+        onValue(ref(db, 'lastUpdate'), (snapshot) => {
+            const time = snapshot.val();
+            document.getElementById('lastUpdateText').innerText = `最後更新時間：${time || '尚未更新'}`;
+        });
+
+        function updateTimestamp() {
+            const now = new Date();
+            const timeStr = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+            update(ref(db), { lastUpdate: timeStr });
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            const year = currentNavDate.getFullYear();
+            const month = currentNavDate.getMonth();
+            document.getElementById('yearSelect').value = year;
+            document.getElementById('displayMonth').innerText = `${month + 1}月`;
+            grid.innerHTML = '';
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            ['日','一','二','三','四','五','六'].forEach(d => grid.innerHTML += `<div class="day-label">週${d}</div>`);
+            const firstDay = new Date(year, month, 1).getDay();
+            for (let i = 0; i < firstDay; i++) grid.innerHTML += `<div class="day"></div>`;
+            for (let d = 1; d <= new Date(year, month + 1, 0).getDate(); d++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const solar = new Date(year, month, d);
+                const lunar = Solar.fromDate(solar).getLunar();
+                // 這裡會從 allEvents 抓資料，所以上面一定要有監聽
+                let eventHtml = allEvents.filter(e => e.date === dateStr).map(e => `<div class="event-tag">${e.name}</div>`).join('');
+                const dayDiv = document.createElement('div');
+                dayDiv.className = `day ${dateStr === todayStr ? 'today' : ''}`;
+                dayDiv.innerHTML = `<div class="day-header"><span class="day-num">${d}</span><span class="lunar-num">${lunar.getDayInChinese()==='初一'?lunar.getMonthInChinese()+'月':lunar.getDayInChinese()}</span></div>${eventHtml}`;
+                dayDiv.onclick = () => openAdminModal(dateStr);
+                grid.appendChild(dayDiv);
+            }
+        }
+
+        window.saveEvent = () => {
+            const id = document.getElementById('editing-id').value;
+            const name = document.getElementById('eventName').value;
+            const loc = document.getElementById('eventLocation').value;
+            if(!name || !loc) return alert("請填寫活動名稱與宮址");
+            
+            const data = {
+                date: selectedDate, name: name, location: loc,
+                link: document.getElementById('eventLink').value,
+                paradeList: document.getElementById('paradeList').value,
+                routeMap: document.getElementById('routeMap').value,
+                notes: document.getElementById('notes').value
+            };
+            
+            const action = id ? update(ref(db, `events/${id}`), data) : push(ref(db, 'events'), data);
+            action.then(() => { 
+                updateTimestamp(); // 儲存成功後更新全域時間
+                alert("完成發佈"); 
+                resetForm(); 
+            });
+        };
+
+        window.deleteEvent = (id, name) => { 
+            if(confirm(`確定要刪除「${name}」？`)) {
+                remove(ref(db, `events/${id}`)).then(() => {
+                    updateTimestamp(); // 刪除成功後更新全域時間
+                });
+            }
+        };
+
+        window.jumpToYear = (year) => { currentNavDate.setFullYear(parseInt(year)); renderCalendar(); };
+        window.openAdminModal = (date) => {
+            selectedDate = date;
+            document.getElementById('selected-date-display').innerText = `📅 日期：${date}`;
+            resetForm();
+            refreshEventList(date);
+            document.getElementById('admin-modal').style.display = 'block';
+            document.getElementById('modal-overlay').style.display = 'block';
+        };
+
+        function refreshEventList(date) {
+            const container = document.getElementById('event-list-container');
+            const filtered = allEvents.filter(e => e.date === date);
+            if(filtered.length === 0) { container.innerHTML = `<p style="font-size:13px; color:#999;">暫無活動</p>`; return; }
+            container.innerHTML = filtered.map(e => `
+                <div class="existing-item">
+                    <span style="font-size:14px; font-weight:bold;">${e.name}</span>
+                    <div>
+                        <button onclick="editEvent('${e.id}')" style="background:#3498db; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; margin-right:5px;">編輯</button>
+                        <button onclick="deleteEvent('${e.id}', '${e.name}')" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">刪除</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.editEvent = (id) => {
+            const e = allEvents.find(item => item.id === id);
+            document.getElementById('editing-id').value = id;
+            document.getElementById('eventName').value = e.name;
+            document.getElementById('eventLocation').value = e.location || "";
+            document.getElementById('eventLink').value = e.link || "";
+            document.getElementById('paradeList').value = e.paradeList || "";
+            document.getElementById('routeMap').value = e.routeMap || "";
+            document.getElementById('notes').value = e.notes || "";
+            document.getElementById('form-title').innerText = "📝 正在編輯：" + e.name;
+            document.getElementById('submit-btn').innerText = "儲存修改";
+        };
+
+        function resetForm() { 
+            document.querySelectorAll('#admin-modal input, #admin-modal textarea').forEach(i => i.value = ""); 
+            document.getElementById('editing-id').value = ""; 
+            document.getElementById('form-title').innerText = "➕ 新增活動"; 
+            document.getElementById('submit-btn').innerText = "加入並發佈";
+        }
+
+        window.closeAdminModal = () => { 
+            document.getElementById('admin-modal').style.display = 'none'; 
+            document.getElementById('modal-overlay').style.display = 'none'; 
+        };
+
+        window.changeMonth = (val) => { currentNavDate.setDate(1); currentNavDate.setMonth(currentNavDate.getMonth() + val); renderCalendar(); };
+        window.goToToday = () => { currentNavDate = new Date(); renderCalendar(); };
+
+        initYearSelect();
+        renderCalendar();
+    </script>
+</body>
+</html>

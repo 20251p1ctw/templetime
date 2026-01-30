@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全台廟會活動時刻表</title>
+    <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.js"></script>
+    <style>
+        :root { --primary-red: #d32f2f; --dark-blue: #34495e; --bg-cream: #f9f7f2; }
+        body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; padding: 10px; background: var(--bg-cream); }
+        .page-header { text-align: center; margin-bottom: 20px; }
+        
+        /* 資訊區塊樣式 */
+        .info-section { font-size: 14px; color: #555; line-height: 1.8; margin: 15px auto; max-width: 800px; }
+        .info-link { color: var(--primary-red); text-decoration: none; font-weight: bold; }
+        .info-link:hover { text-decoration: underline; }
+        .notice-box { 
+            background: #fff3f3; border-radius: 8px; padding: 12px; display: inline-block; 
+            margin-top: 15px; border: 1px solid #ffebeb; text-align: left; 
+        }
+        .line-link { color: #00b900; font-weight: bold; text-decoration: none; }
+
+        .calendar-container { max-width: 900px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 15px rgba(0,0,0,0.1); padding: 20px; }
+        
+        /* 導覽列排版 */
+        .calendar-nav { display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: center; margin-bottom: 20px; }
+        .nav-year select { 
+            font-size: 24px; font-weight: bold; border: none; background: transparent; 
+            color: var(--dark-blue); cursor: pointer; outline: none; appearance: none;
+        }
+        .nav-month { text-align: center; font-size: 24px; font-weight: bold; color: var(--primary-red); }
+        .nav-controls { text-align: right; display: flex; justify-content: flex-end; gap: 8px; }
+        
+        .nav-btn { background: var(--dark-blue); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; }
+        .btn-today { background: #7f8c8d; }
+
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); border: 1px solid #eee; }
+        .day-label { background: #fff; text-align: center; padding: 12px 0; font-weight: bold; border-bottom: 2px solid #eee; border-right: 1px solid #eee; font-size: 14px; }
+        .day { min-height: 100px; background: white; border-right: 1px solid #eee; border-bottom: 1px solid #eee; padding: 5px; position: relative; }
+        .day.today { background: #fffde7 !important; }
+        .day-header { display: flex; justify-content: flex-end; align-items: baseline; gap: 4px; margin-bottom: 4px; }
+        .day-num { font-size: 14px; font-weight: bold; }
+        .lunar-num { font-size: 11px; color: #999; }
+        .event-tag { background: var(--primary-red); color: white; font-size: 11px; padding: 2px 4px; border-radius: 3px; margin-top: 2px; }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <h1>🏮 全台廟會活動時刻表</h1>
+        
+        <div class="info-section">
+            <p id="lastUpdateText" style="margin: 5px 0; font-weight: bold;">最後更新時間：載入中...</p>
+            
+            <p style="margin: 5px 0;">
+                📝 如需投稿請按我：<a href="https://forms.gle/4BAqXWdR9SL2TcJ88" target="_blank" class="info-link">投稿連結</a>
+            </p>
+            
+            <p style="margin: 5px 0;">
+                🎬 此網站為一拍一剪編輯：<a href="https://20251p1ctw.github.io/1p1c/" target="_blank" style="color: var(--dark-blue); text-decoration: underline;">點我回一拍一剪網站</a>
+            </p>
+            
+            <div class="notice-box">
+                <p style="margin: 0; font-size: 13px;">⚠️ 部分陣容、接駕之訊息依主家、廟方公佈為主，如有資訊落差敬請見諒。</p>
+                <p style="margin: 8px 0 0 0; font-size: 13px;">💬 如有資訊錯誤或需要補充，歡迎至一拍一剪官方LINE：
+                    <a href="https://line.me/R/ti/p/@632jsgvl" target="_blank" class="line-link">@632jsgvl</a> 小編會盡快更改～
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="calendar-container">
+        <div class="calendar-nav">
+            <div class="nav-year">
+                <select id="yearSelect" onchange="jumpToYear(this.value)"></select>
+            </div>
+            <div class="nav-month" id="displayMonth"></div>
+            <div class="nav-controls">
+                <button class="nav-btn btn-today" onclick="goToToday()">today</button>
+                <button class="nav-btn" onclick="changeMonth(-1)">&lt;</button>
+                <button class="nav-btn" onclick="changeMonth(1)">&gt;</button>
+            </div>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCBb-MHXXl80WIHsN5inq7-XmHxhsru8_Q",
+            authDomain: "templetime1p1c.firebaseapp.com",
+            databaseURL: "https://templetime1p1c-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "templetime1p1c",
+            storageBucket: "templetime1p1c.firebasestorage.app",
+            messagingSenderId: "167715763352",
+            appId: "1:167715763352:web:082b97c4a62dd2f40fcced"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        let currentNavDate = new Date();
+        let allEvents = [];
+
+        function initYearSelect() {
+            const yearSelect = document.getElementById('yearSelect');
+            const currentYear = new Date().getFullYear();
+            yearSelect.innerHTML = '';
+            for (let i = currentYear - 5; i <= currentYear + 10; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.text = `${i}年`;
+                yearSelect.appendChild(opt);
+            }
+        }
+
+        // 監聽活動資料 (原本的)
+        onValue(ref(db, 'events'), (snapshot) => {
+            allEvents = [];
+            const data = snapshot.val();
+            if(data) for(let id in data) allEvents.push(data[id]);
+            renderCalendar();
+        });
+
+        // 監聽「最後更新時間」路徑 (新增的)
+        onValue(ref(db, 'lastUpdate'), (snapshot) => {
+            const time = snapshot.val();
+            const updateElem = document.getElementById('lastUpdateText');
+            if (updateElem) {
+                updateElem.innerText = `最後更新時間：${time || '尚未更新'}`;
+            }
+        });
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            const year = currentNavDate.getFullYear();
+            const month = currentNavDate.getMonth();
+            
+            document.getElementById('yearSelect').value = year;
+            document.getElementById('displayMonth').innerText = `${month + 1}月`;
+            grid.innerHTML = '';
+
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            ['日','一','二','三','四','五','六'].forEach(d => grid.innerHTML += `<div class="day-label">週${d}</div>`);
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            for (let i = 0; i < firstDay; i++) grid.innerHTML += `<div class="day"></div>`;
+
+            for (let d = 1; d <= new Date(year, month + 1, 0).getDate(); d++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const solar = new Date(year, month, d);
+                const lunar = Solar.fromDate(solar).getLunar();
+                let eventHtml = allEvents.filter(e => e.date === dateStr).map(e => `<div class="event-tag">${e.name}</div>`).join('');
+                const dayDiv = document.createElement('div');
+                dayDiv.className = `day ${dateStr === todayStr ? 'today' : ''}`;
+                dayDiv.innerHTML = `<div class="day-header"><span class="day-num">${d}</span><span class="lunar-num">${lunar.getDayInChinese()==='初一'?lunar.getMonthInChinese()+'月':lunar.getDayInChinese()}</span></div>${eventHtml}`;
+                grid.appendChild(dayDiv);
+            }
+        }
+
+        window.jumpToYear = (year) => {
+            currentNavDate.setFullYear(parseInt(year));
+            renderCalendar();
+        };
+
+        window.changeMonth = (val) => {
+            currentNavDate.setDate(1); 
+            currentNavDate.setMonth(currentNavDate.getMonth() + val);
+            renderCalendar();
+        };
+
+        window.goToToday = () => {
+            currentNavDate = new Date();
+            renderCalendar();
+        };
+
+        initYearSelect();
+        renderCalendar();
+    </script>
+</body>
+</html>
