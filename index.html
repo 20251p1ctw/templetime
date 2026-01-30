@@ -21,58 +21,53 @@
         .line-link { color: #00b900; font-weight: bold; text-decoration: none; }
 
         .calendar-container { max-width: 900px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 15px rgba(0,0,0,0.1); padding: 20px; }
-        
-        /* 導覽列排版 */
         .calendar-nav { display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: center; margin-bottom: 20px; }
-        .nav-year select { 
-            font-size: 24px; font-weight: bold; border: none; background: transparent; 
-            color: var(--dark-blue); cursor: pointer; outline: none; appearance: none;
-        }
+        .nav-year select { font-size: 24px; font-weight: bold; border: none; background: transparent; color: var(--dark-blue); cursor: pointer; outline: none; appearance: none; }
         .nav-month { text-align: center; font-size: 24px; font-weight: bold; color: var(--primary-red); }
         .nav-controls { text-align: right; display: flex; justify-content: flex-end; gap: 8px; }
-        
         .nav-btn { background: var(--dark-blue); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; }
         .btn-today { background: #7f8c8d; }
 
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); border: 1px solid #eee; }
         .day-label { background: #fff; text-align: center; padding: 12px 0; font-weight: bold; border-bottom: 2px solid #eee; border-right: 1px solid #eee; font-size: 14px; }
-        .day { min-height: 100px; background: white; border-right: 1px solid #eee; border-bottom: 1px solid #eee; padding: 5px; position: relative; }
+        .day { min-height: 100px; background: white; border-right: 1px solid #eee; border-bottom: 1px solid #eee; padding: 5px; cursor: pointer; transition: 0.2s; }
+        .day:hover { background: #fdfaf0; }
         .day.today { background: #fffde7 !important; }
         .day-header { display: flex; justify-content: flex-end; align-items: baseline; gap: 4px; margin-bottom: 4px; }
         .day-num { font-size: 14px; font-weight: bold; }
         .lunar-num { font-size: 11px; color: #999; }
-        .event-tag { background: var(--primary-red); color: white; font-size: 11px; padding: 2px 4px; border-radius: 3px; margin-top: 2px; }
+        .event-tag { background: var(--primary-red); color: white; font-size: 11px; padding: 2px 4px; border-radius: 3px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* 觀眾端彈窗樣式 */
+        #modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index: 999; backdrop-filter: blur(3px); }
+        #info-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; z-index: 1000; width: 90%; max-width: 500px; max-height: 85vh; overflow-y: auto; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        
+        .event-item-card { background: #fcf8f8; border-left: 5px solid var(--primary-red); padding: 15px; border-radius: 8px; margin-bottom: 12px; cursor: pointer; transition: 0.2s; }
+        .event-item-card:hover { background: #f9ebeb; }
+        .detail-row { margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .detail-label { color: var(--primary-red); font-weight: bold; font-size: 14px; margin-bottom: 5px; display: block; }
+        .btn-close { width: 100%; background: var(--dark-blue); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .back-link { display: inline-block; color: #666; font-size: 14px; margin-bottom: 15px; cursor: pointer; text-decoration: underline; }
+        .detail-value { font-size: 16px; color: #333; line-height: 1.5; white-space: pre-wrap; text-align: left !important; /* 強制靠左 */display: block; width: 100%;}
     </style>
 </head>
 <body>
     <div class="page-header">
         <h1>🏮 全台廟會活動時刻表</h1>
-        
         <div class="info-section">
             <p id="lastUpdateText" style="margin: 5px 0; font-weight: bold;">最後更新時間：載入中...</p>
-            
-            <p style="margin: 5px 0;">
-                📝 如需投稿請按我：<a href="https://forms.gle/4BAqXWdR9SL2TcJ88" target="_blank" class="info-link">投稿連結</a>
-            </p>
-            
-            <p style="margin: 5px 0;">
-                🎬 此網站為一拍一剪編輯：<a href="https://20251p1ctw.github.io/1p1c/" target="_blank" style="color: var(--dark-blue); text-decoration: underline;">點我回一拍一剪網站</a>
-            </p>
-            
+            <p style="margin: 5px 0;">📝 如需投稿請按我：<a href="https://forms.gle/4BAqXWdR9SL2TcJ88" target="_blank" class="info-link">投稿連結</a></p>
+            <p style="margin: 5px 0;">🎬 此網站為一拍一剪編輯：<a href="https://20251p1ctw.github.io/1p1c/" target="_blank" style="color: var(--dark-blue); text-decoration: underline;">點我回一拍一剪網站</a></p>
             <div class="notice-box">
                 <p style="margin: 0; font-size: 13px;">⚠️ 部分陣容、接駕之訊息依主家、廟方公佈為主，如有資訊落差敬請見諒。</p>
-                <p style="margin: 8px 0 0 0; font-size: 13px;">💬 如有資訊錯誤或需要補充，歡迎至一拍一剪官方LINE：
-                    <a href="https://line.me/R/ti/p/@632jsgvl" target="_blank" class="line-link">@632jsgvl</a> 小編會盡快更改～
-                </p>
+                <p style="margin: 8px 0 0 0; font-size: 13px;">💬 如有資訊錯誤或需要補充，歡迎至一拍一剪官方LINE：<a href="https://line.me/R/ti/p/@632jsgvl" target="_blank" class="line-link">@632jsgvl</a></p>
             </div>
         </div>
     </div>
 
     <div class="calendar-container">
         <div class="calendar-nav">
-            <div class="nav-year">
-                <select id="yearSelect" onchange="jumpToYear(this.value)"></select>
-            </div>
+            <div class="nav-year"><select id="yearSelect" onchange="jumpToYear(this.value)"></select></div>
             <div class="nav-month" id="displayMonth"></div>
             <div class="nav-controls">
                 <button class="nav-btn btn-today" onclick="goToToday()">today</button>
@@ -81,6 +76,13 @@
             </div>
         </div>
         <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
+
+    <div id="modal-overlay" onclick="closeModal()"></div>
+    <div id="info-modal">
+        <div id="modal-content">
+            </div>
+        <button class="btn-close" onclick="closeModal()">關閉視窗</button>
     </div>
 
     <script type="module">
@@ -108,45 +110,37 @@
             yearSelect.innerHTML = '';
             for (let i = currentYear - 5; i <= currentYear + 10; i++) {
                 const opt = document.createElement('option');
-                opt.value = i;
-                opt.text = `${i}年`;
+                opt.value = i; opt.text = `${i}年`;
                 yearSelect.appendChild(opt);
             }
         }
 
-        // 監聽活動資料 (原本的)
         onValue(ref(db, 'events'), (snapshot) => {
             allEvents = [];
             const data = snapshot.val();
-            if(data) for(let id in data) allEvents.push(data[id]);
+            if(data) {
+                for(let id in data) allEvents.push({ id, ...data[id] });
+            }
             renderCalendar();
         });
 
-        // 監聽「最後更新時間」路徑 (新增的)
         onValue(ref(db, 'lastUpdate'), (snapshot) => {
             const time = snapshot.val();
-            const updateElem = document.getElementById('lastUpdateText');
-            if (updateElem) {
-                updateElem.innerText = `最後更新時間：${time || '尚未更新'}`;
-            }
+            document.getElementById('lastUpdateText').innerText = `最後更新時間：${time || '尚未更新'}`;
         });
 
         function renderCalendar() {
             const grid = document.getElementById('calendarGrid');
             const year = currentNavDate.getFullYear();
             const month = currentNavDate.getMonth();
-            
             document.getElementById('yearSelect').value = year;
             document.getElementById('displayMonth').innerText = `${month + 1}月`;
             grid.innerHTML = '';
-
             const today = new Date();
             const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
             ['日','一','二','三','四','五','六'].forEach(d => grid.innerHTML += `<div class="day-label">週${d}</div>`);
-            
             const firstDay = new Date(year, month, 1).getDay();
             for (let i = 0; i < firstDay; i++) grid.innerHTML += `<div class="day"></div>`;
-
             for (let d = 1; d <= new Date(year, month + 1, 0).getDate(); d++) {
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                 const solar = new Date(year, month, d);
@@ -155,25 +149,88 @@
                 const dayDiv = document.createElement('div');
                 dayDiv.className = `day ${dateStr === todayStr ? 'today' : ''}`;
                 dayDiv.innerHTML = `<div class="day-header"><span class="day-num">${d}</span><span class="lunar-num">${lunar.getDayInChinese()==='初一'?lunar.getMonthInChinese()+'月':lunar.getDayInChinese()}</span></div>${eventHtml}`;
+                dayDiv.onclick = () => showEventList(dateStr);
                 grid.appendChild(dayDiv);
             }
         }
 
-        window.jumpToYear = (year) => {
-            currentNavDate.setFullYear(parseInt(year));
-            renderCalendar();
+        // --- 顯示當日活動列表 ---
+        window.showEventList = (date) => {
+            const filtered = allEvents.filter(e => e.date === date);
+            if(filtered.length === 0) return; // 沒活動不彈窗
+
+            let html = `<h2 style="color:var(--primary-red); margin-top:0;">📅 ${date} 活動清單</h2>`;
+            filtered.forEach(e => {
+                html += `
+                    <div class="event-item-card" onclick="showEventDetail('${e.id}')">
+                        <strong style="font-size:18px;">${e.name}</strong><br>
+                        <span style="font-size:14px; color:#666;">📍 ${e.location}</span>
+                        <div style="text-align:right; font-size:12px; color:var(--primary-red);">查看詳情 ></div>
+                    </div>
+                `;
+            });
+            document.getElementById('modal-content').innerHTML = html;
+            document.getElementById('info-modal').style.display = 'block';
+            document.getElementById('modal-overlay').style.display = 'block';
         };
 
-        window.changeMonth = (val) => {
-            currentNavDate.setDate(1); 
-            currentNavDate.setMonth(currentNavDate.getMonth() + val);
-            renderCalendar();
+        // --- 顯示單一活動詳情 ---
+        window.showEventDetail = (id) => {
+            const e = allEvents.find(item => item.id === id);
+            if(!e) return;
+
+            // 修正：使用正確的反引號插值語法 ${}，原本的 1{...} 是錯誤的
+            const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(e.location + ' ' + e.name)}`;
+
+            let html = `
+                <div class="back-link" onclick="showEventList('${e.date}')">< 返回清單</div>
+                <h2 style="color:var(--primary-red); margin:0 0 20px 0; text-align: left;">🏮 ${e.name}</h2>
+                
+                <div class="detail-row" style="text-align: left !important;"> 
+                    <span class="detail-label" style="display: block; margin-bottom: 5px; text-align: left;">📍 宮址/堂址 (點擊導航)</span>
+                    <div class="detail-value" style="padding-left: 0; text-align: left !important;">
+                        <a href="${mapUrl}" target="_blank" style="text-decoration:none; color:#34495e; display: block; text-align: left;">
+                            ${e.location} 
+                            <span style="font-size:12px; color:var(--primary-red); margin-left:5px; white-space: nowrap;">🔍 開啟地圖</span>
+                        </a>
+                    </div>
+                </div>
+                
+                ${e.link ? `
+                <div class="detail-row" style="text-align: left;">
+                    <span class="detail-label">🔗 相關連結</span>
+                    <div class="detail-value"><a href="${e.link}" target="_blank" style="color:#3498db;">點我查看官方資訊</a></div>
+                </div>` : ''}
+
+                ${e.paradeList ? `
+                <div class="detail-row" style="text-align: left;">
+                    <span class="detail-label">🥁 陣頭列表</span>
+                    <div class="detail-value">${e.paradeList}</div>
+                </div>` : ''}
+
+                ${e.routeMap ? `
+                <div class="detail-row" style="text-align: left;">
+                    <span class="detail-label">🚩 路關資訊</span>
+                    <div class="detail-value">${e.routeMap}</div>
+                </div>` : ''}
+
+                ${e.notes ? `
+                <div class="detail-row" style="text-align: left;">
+                    <span class="detail-label">📝 其他備註</span>
+                    <div class="detail-value">${e.notes}</div>
+                </div>` : ''}
+            `;
+            document.getElementById('modal-content').innerHTML = html;
         };
 
-        window.goToToday = () => {
-            currentNavDate = new Date();
-            renderCalendar();
+        window.closeModal = () => {
+            document.getElementById('info-modal').style.display = 'none';
+            document.getElementById('modal-overlay').style.display = 'none';
         };
+
+        window.jumpToYear = (year) => { currentNavDate.setFullYear(parseInt(year)); renderCalendar(); };
+        window.changeMonth = (val) => { currentNavDate.setDate(1); currentNavDate.setMonth(currentNavDate.getMonth() + val); renderCalendar(); };
+        window.goToToday = () => { currentNavDate = new Date(); renderCalendar(); };
 
         initYearSelect();
         renderCalendar();
